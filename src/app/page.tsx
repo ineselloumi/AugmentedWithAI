@@ -1,65 +1,152 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import type { Task, TaskTool } from "@/types";
+import SearchBar from "@/components/SearchBar";
+import SearchFilters from "@/components/SearchFilters";
+import ResultsSection from "@/components/ResultsSection";
+import TrendingPanel from "@/components/TrendingPanel";
+
+const QUICK_ROLES = ["Product Manager", "Software Engineer", "Data Analyst", "Marketing Manager"];
 
 export default function Home() {
+  const [query, setQuery] = useState("");
+  const [submittedRole, setSubmittedRole] = useState("");
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [toolsMap, setToolsMap] = useState<Record<string, TaskTool[] | null>>({});
+  const [loadingTools, setLoadingTools] = useState<Record<string, boolean>>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [hasChatGPT, setHasChatGPT] = useState(false);
+  const [hasClaude, setHasClaude] = useState(false);
+  const [freeOnly, setFreeOnly] = useState(false);
+
+  function handleFilterChange(key: "hasChatGPT" | "hasClaude" | "freeOnly", value: boolean) {
+    if (key === "hasChatGPT") setHasChatGPT(value);
+    if (key === "hasClaude") setHasClaude(value);
+    if (key === "freeOnly") setFreeOnly(value);
+  }
+
+  async function fetchToolsForTask(role: string, task: Task, chatGPT: boolean, claude: boolean) {
+    setLoadingTools((prev) => ({ ...prev, [task.id]: true }));
+    try {
+      const res = await fetch("/api/role-tools", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role,
+          taskTitle: task.title,
+          taskDescription: task.description,
+          hasChatGPT: chatGPT,
+          hasClaude: claude,
+        }),
+      });
+      const data = await res.json();
+      setToolsMap((prev) => ({
+        ...prev,
+        [task.id]: res.ok ? data.tools : null,
+      }));
+    } catch {
+      setToolsMap((prev) => ({ ...prev, [task.id]: null }));
+    } finally {
+      setLoadingTools((prev) => ({ ...prev, [task.id]: false }));
+    }
+  }
+
+  async function handleSearch(role?: string) {
+    const searchRole = (role ?? query).trim();
+    if (!searchRole) return;
+
+    if (role) setQuery(role);
+    setIsLoading(true);
+    setError(null);
+    setTasks([]);
+    setToolsMap({});
+    setLoadingTools({});
+
+    try {
+      // Phase 1 — fast, no web search
+      const res = await fetch("/api/analyze-role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: searchRole }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "Something went wrong");
+        return;
+      }
+
+      const resolvedRole: string = data.role;
+      const resolvedTasks: Task[] = data.tasks;
+
+      setSubmittedRole(resolvedRole);
+      setTasks(resolvedTasks);
+      setIsLoading(false);
+
+      // Phase 2 — parallel tool fetches, one per task
+      // Snapshot filter state at search time so all tasks use the same flags
+      resolvedTasks.forEach((task) => fetchToolsForTask(resolvedRole, task, hasChatGPT, hasClaude));
+    } catch {
+      setError("Failed to reach the server. Please try again.");
+      setIsLoading(false);
+    }
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <main className="min-h-screen bg-[#0a0a0a] flex gap-10 items-start px-4 pt-14 pb-20">
+      <div className="flex-1 flex justify-center">
+      <div className="w-full max-w-2xl">
+        {/* Header */}
+        <p className="text-green-400 text-sm font-semibold mb-3">AI Discovery</p>
+        <h1 className="text-4xl font-bold text-white leading-tight mb-3">
+          <span className="underline decoration-white underline-offset-4">Find AI tools</span> for your role
+        </h1>
+        <p className="text-neutral-400 text-sm leading-relaxed mb-7">
+          Search your job title to discover high-leverage automations
+        </p>
+
+        {/* Search */}
+        <SearchBar
+          value={query}
+          onChange={setQuery}
+          onSubmit={() => handleSearch()}
+          onSelectRole={(role) => handleSearch(role)}
+          quickRoles={QUICK_ROLES}
+          isLoading={isLoading}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+
+        <SearchFilters
+          hasChatGPT={hasChatGPT}
+          hasClaude={hasClaude}
+          freeOnly={freeOnly}
+          onChange={handleFilterChange}
+          disabled={isLoading}
+        />
+
+        {error && (
+          <p className="mt-6 text-sm text-red-400 bg-red-950 border border-red-900 rounded-xl px-4 py-3">
+            {error}
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+        )}
+
+        {(isLoading || tasks.length > 0) && (
+          <ResultsSection
+            role={submittedRole}
+            tasks={tasks}
+            toolsMap={toolsMap}
+            loadingTools={loadingTools}
+            isLoading={isLoading}
+            freeOnly={freeOnly}
+          />
+        )}
+      </div>
+      </div>
+      <div className="w-[480px] shrink-0 sticky top-8 hidden lg:block pr-2">
+        <TrendingPanel />
+      </div>
+    </main>
   );
 }
