@@ -40,3 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .role-cache.json
+
+# pipeline (generated reports and subscriber data)
+.pipeline/
+pipeline-report-sample.md

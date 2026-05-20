@@ -11,10 +11,10 @@ function renderWithInlineLinks(text: string, evidence: EvidenceItem[], toolName:
       const ev = evidence.find((e) => e.author === part);
       const url = ev
         ? evidenceLink(ev, toolName)
-        : `https://x.com/search?q=${encodeURIComponent(`${part} ${toolName}`)}&src=typed_query&f=top`;
+        : `https://x.com/${part.slice(1)}`;
       return (
         <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-          className="text-neutral-400 hover:text-neutral-200 underline underline-offset-2 decoration-neutral-600 hover:decoration-neutral-400 transition-colors">
+          className="text-neutral-300 hover:text-white underline underline-offset-2 decoration-neutral-500 hover:decoration-neutral-300 transition-colors">
           {part}
         </a>
       );
@@ -41,28 +41,21 @@ export default function TrendingPanel() {
       <div className="flex items-center gap-2 mb-4">
         <span className="text-lg">𝕏</span>
         <h2 className="text-sm font-semibold text-white">Trending on X.com</h2>
-        <span className="text-xs text-neutral-500 ml-auto">last 7 days</span>
-      </div>
-
-      {/* Subscribe to weekly report */}
-      <div className="mb-5 rounded-xl border border-neutral-800 bg-neutral-900/60 px-3 py-3">
-        <p className="text-xs font-semibold text-neutral-300 mb-1">Get the weekly AI report</p>
-        <p className="text-xs text-neutral-600 mb-2">Curated, verified, sent every Monday.</p>
-        <SubscribeForm />
+        <span className="text-xs text-neutral-400 ml-auto">last 7 days</span>
       </div>
 
       {loading && <SkeletonList />}
 
       {error && (
-        <p className="text-xs text-neutral-600">Could not load trending data.</p>
+        <p className="text-xs text-neutral-400">Could not load trending data.</p>
       )}
 
       {data && (
         <div className="flex flex-col gap-3">
           {data.trends_summary && (
             <div className="mb-1">
-              <p className="text-xs font-semibold text-neutral-400 mb-1">This week in AI</p>
-              <p className="text-xs text-neutral-500 leading-relaxed">
+              <p className="text-xs font-semibold text-neutral-300 mb-1">This week in AI</p>
+              <p className="text-xs text-neutral-400 leading-relaxed">
                 {data.trends_summary.split(/\s+/).slice(0, 40).join(" ")}
               </p>
             </div>
@@ -72,26 +65,39 @@ export default function TrendingPanel() {
           ))}
         </div>
       )}
+
+      {/* Waitlist — shown after content has loaded */}
+      {!loading && (
+        <div className="mt-5 rounded-xl border border-neutral-800 bg-neutral-900/60 px-4 py-4">
+          <SubscribeForm />
+        </div>
+      )}
     </aside>
   );
 }
 
-// Real tweet IDs are 10+ digit numbers — anything shorter is likely fabricated
-function isValidTweetUrl(url: string | null): boolean {
+// Real tweet IDs are 10+ digit numbers — anything shorter is likely fabricated.
+// Also verify the username in the URL matches the evidence author to catch hallucinated URLs.
+function isValidTweetUrl(url: string | null, author?: string): boolean {
   if (!url) return false;
   try {
     const u = new URL(url);
     if (!["x.com", "twitter.com"].includes(u.hostname)) return false;
     const parts = u.pathname.split("/").filter(Boolean);
     if (parts.length < 3 || parts[1] !== "status") return false;
-    return /^\d{10,}$/.test(parts[2]);
+    if (!/^\d{10,}$/.test(parts[2])) return false;
+    if (author) {
+      const handle = author.startsWith("@") ? author.slice(1) : author;
+      if (parts[0].toLowerCase() !== handle.toLowerCase()) return false;
+    }
+    return true;
   } catch {
     return false;
   }
 }
 
 function evidenceLink(ev: EvidenceItem, toolName: string): string {
-  if (isValidTweetUrl(ev.url)) return ev.url!;
+  if (isValidTweetUrl(ev.url, ev.author ?? undefined)) return ev.url!;
   const q = ev.author ? `${ev.author} ${toolName}` : toolName;
   return `https://x.com/search?q=${encodeURIComponent(q)}&src=typed_query&f=top`;
 }
@@ -116,15 +122,15 @@ function TrendingCard({ item }: { rank: number; item: TrendingItem }) {
             >
               {item.name}
             </a>
-            <span className="text-xs text-neutral-500 bg-neutral-800 px-1.5 py-0.5 rounded-full shrink-0">
+            <span className="text-xs text-neutral-400 bg-neutral-800 px-1.5 py-0.5 rounded-full shrink-0">
               {item.category}
             </span>
           </div>
 
-          <p className="text-xs text-neutral-400 leading-relaxed">{item.description}</p>
+          <p className="text-xs text-neutral-300 leading-relaxed">{item.description}</p>
 
           {item.why_trending && (
-            <p className="text-xs text-neutral-600 mt-1 leading-relaxed">
+            <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
               {renderWithInlineLinks(item.why_trending, evidence, item.name)}
             </p>
           )}

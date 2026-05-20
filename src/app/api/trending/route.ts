@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
 import type { TrendingResponse } from "@/types";
 
-export const maxDuration = 120; // seconds — Grok search can take ~60s
+export const maxDuration = 120;
 
 const GROK_MODEL = "grok-4-0709";
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const CLAUDE_MODEL = "claude-sonnet-4-6";
+const CACHE_TTL_MS = 60 * 60 * 1000;
 
 let cache: { data: TrendingResponse; cachedAt: number } | null = null;
 
@@ -14,59 +16,124 @@ function getSinceDate(): string {
   return d.toISOString().split("T")[0];
 }
 
-function buildPrompt(sinceDate: string): string {
-  return `You are an expert AI analyst focused on emerging tools and breakthroughs. You MUST use the x_search and web_search tools to find real, current data. Do NOT use your training data or generate fictional results — every item must come from actual posts or articles you find through search.
+// --- Prompts ---
 
-Search X (Twitter) and the web for the most relevant and trending AI tools, models, frameworks, platforms, and significant releases from the last 7 days (since ${sinceDate}).
+function buildGrokPrompt(sinceDate: string): string {
+  return `You are an AI analyst monitoring X (Twitter) for AI discussions.
 
-**Time window**: STRICTLY only include content from since:${sinceDate}. Reject anything older.
+Search X for AI tools, models, frameworks, and platforms generating significant DISCUSSION in the last 7 days (since ${sinceDate}).
 
-**What qualifies as "trending" or noteworthy (rank by strength)**:
-1. High engagement + mentions from credible tech voices (Andrej Karpathy, Yann LeCun, Elon Musk, Demis Hassabis, Dario Amodei, Emad Mostaque, Andrew Ng, Fei-Fei Li, researchers from OpenAI/Anthropic/Google DeepMind/xAI, top indie hackers, or well-known AI engineers).
-2. Rapid discussion velocity or sudden spikes.
-3. New tools, major new releases/updates with clear new capabilities, or older tools that are suddenly surging.
+**Focus on discussion activity, not just new launches.** Include:
+- Newly announced or launched AI tools/models
+- Existing tools/models generating conversation this week due to new benchmarks, discoveries, controversies, or comparisons
+- Community reactions, debates, or surging interest in any AI topic from the past 7 days
 
-**Search strategy**: Run multiple searches — e.g. "new AI tools since:${sinceDate}", "AI model release since:${sinceDate}", "trending AI since:${sinceDate}". Prioritize posts from credible voices.
+**Search strategy**: Run multiple x_search calls — try queries like "AI tools since:${sinceDate}", "AI model benchmark since:${sinceDate}", "AI trending since:${sinceDate}", "LLM release since:${sinceDate}".
 
-**Precise naming — this is mandatory**:
-- Always use the exact, specific product or model name as it appears in official announcements or posts. Never use a brand name alone as a model name.
-- AI models have specific version names: use "Claude Sonnet 4" or "Claude Opus 4" — never just "Claude 4". Use "GPT-4o" or "o3" — never just "ChatGPT". Use "Gemini 2.5 Pro" — never just "Gemini". If you are unsure of the exact model name, search for it before including it.
-- If a release covers a whole family (e.g. Anthropic releases multiple models at once), name the most notable specific variant.
+**Precise naming**: Use exact product/model names (e.g. "Claude Sonnet 4" not "Claude 4", "GPT-4o" not "ChatGPT").
 
-**Anti-hallucination — treat this as a hard rule**:
-- Every benchmark number, engagement metric, and quote must come from a real post or article you found via search. Do not estimate or infer numbers.
-- If you cannot find a real source for a claim, omit the claim entirely rather than approximating.
-- If you cannot find enough verified items from this week, return fewer items — an empty list is better than fabricated entries.
-- If a result feels generic or could have been written without searching (e.g. no specific tweet URL, no real engagement number), discard it and search again.
+**Anti-hallucination**: Only include items you found real X posts for. If you cannot find real evidence, omit the item. Prefer 4 well-evidenced items over 8 vague ones.
 
-**Diverging opinions**: If a tool or model has both enthusiastic endorsements AND notable criticism (benchmarks questioned, limitations called out, safety concerns), explicitly capture both sides. Do not flatten controversy into consensus.
-
-Aim for a healthy mix of models and applications/tools. Be substantive and specific — cite real post URLs, real engagement numbers, real quotes.
-
-Return ONLY valid JSON, no markdown, no explanation, matching this exact schema:
+Return ONLY valid JSON (no markdown fences):
 {
   "items": [
     {
-      "name": "<tool or model name>",
-      "category": "<e.g. Coding Agent, Image/Video Generation, World Models, Model, Reasoning Model, Multimodal, Design Tools, Voice & Audio, Search & Research, Data & Analytics, Agents & Automation, Developer Tools, Enterprise Platform, Consumer App>",
-      "type": "<New tool | New release of existing | Older tool surging>",
-      "description": "<2-3 sentences: what it is, what's specifically new or notable, concrete capabilities or benchmarks>",
-      "why_trending": "<specific reasons for trending. When mentioning people, always use their @handle (e.g. @sama, @karpathy) not their full name, so they can be hyperlinked. Include engagement numbers where available.>",
+      "name": "<exact tool/model name>",
+      "category": "<e.g. Model, Coding Agent, Image Generation, Reasoning Model, etc.>",
+      "type": "<New launch | Existing tool surging | New benchmark/discovery>",
+      "why_trending_on_x": "<specific reason with @handles and engagement numbers where available>",
       "evidence": [
-        {
-          "text": "<quote or concrete observation — prefix with 'Pro:' or 'Con:' if opinions are split>",
-          "author": "<@handle of the person who said it, e.g. @karpathy>",
-          "url": "<direct URL to the specific X post where this was said — must be a real URL you found, or null if not available>"
-        }
+        { "text": "<quote or observation>", "author": "<@handle>", "url": "<real tweet URL or null>" }
       ],
-      "links": ["<real X post URL, product page, GitHub, etc — must be real URLs you found>"]
+      "links": ["<real URLs>"]
     }
-  ],
-  "trends_summary": "<max 40 words highlighting the dominant theme this week>"
+  ]
 }`;
 }
 
-function extractText(output: unknown[]): string | null {
+function buildClaudeWebPrompt(sinceDate: string): string {
+  return `You are an AI analyst monitoring the broader web for AI discussions.
+
+Search the web for AI tools, models, frameworks, and platforms generating significant discussion over the last 7 days (since ${sinceDate}). Cover Hacker News, tech blogs, GitHub releases, research publications, newsletters, Reddit (r/MachineLearning, r/LocalLLaMA), and major tech publications.
+
+**Focus on discussion activity, not just new launches.** Include:
+- Newly announced or launched AI tools/models
+- Existing tools/models with new benchmark results, discoveries, or controversies this week
+- Community debates, viral blog posts, surging GitHub repositories
+- Research papers or findings that sparked notable discussion
+
+**Search strategy**: Run multiple web_search calls — try queries like "trending AI tools this week", "new AI model release ${sinceDate}", "AI benchmark controversy", "AI tool hacker news", "LLM breakthrough week".
+
+**Precise naming**: Use exact product/model names.
+
+**Anti-hallucination**: Only include items you found real web sources for. Prefer 4 well-evidenced items over 8 vague ones.
+
+Return ONLY valid JSON (no markdown fences):
+{
+  "items": [
+    {
+      "name": "<exact tool/model name>",
+      "category": "<e.g. Model, Coding Agent, Image Generation, Reasoning Model, etc.>",
+      "type": "<New launch | Existing tool surging | New benchmark/discovery>",
+      "why_trending_on_web": "<specific reason with concrete evidence>",
+      "evidence": [
+        { "text": "<quote or observation>", "source": "<publication or site name>", "url": "<real URL or null>" }
+      ],
+      "links": ["<real URLs>"]
+    }
+  ]
+}`;
+}
+
+function buildSynthesizerPrompt(grokRaw: string | null, claudeRaw: string | null): string {
+  return `You are an expert AI analyst synthesizing trending AI topics from two independent sources.
+
+**Source 1 — X (Twitter) signals** (Grok, native X search):
+${grokRaw ?? "No data available from this source."}
+
+**Source 2 — Web signals** (Claude web search — HN, blogs, GitHub, publications):
+${claudeRaw ?? "No data available from this source."}
+
+Your task:
+1. **Merge and deduplicate**: If the same tool/model appears in both sources, merge into one item. Cross-source agreement is a strong quality signal — boost its ranking.
+2. **Rank by quality**: Prioritize items with concrete evidence, real engagement numbers, and credible sources.
+3. **Write clean output**: For each item, write a concise description and a short why_trending. Include the best evidence from whichever source had it.
+4. **Target 6-10 high-quality items.** Drop anything generic or lacking real evidence.
+5. **Write a trends_summary** (max 40 words) highlighting the dominant theme this week.
+
+**Tone and language rules (critical):**
+- Write for a smart non-specialist. Assume they use AI tools daily but don't read ML papers.
+- Never use stock ticker symbols (e.g. $NVDA, $MSFT). Always write the full company name.
+- Translate jargon into plain impact: instead of "achieves 88.7% on SWE-bench" say "handles nearly 9 out of 10 real coding tasks correctly in independent tests"; instead of "beats inference latency targets" say "responds faster than previous versions"; instead of "outperforms on GSM8K" say "noticeably better at maths and logic problems"; instead of "4B active parameters" say "a model small enough to run on a laptop".
+- Keep benchmark numbers only if they're intuitive without context (e.g. "2x faster", "half the cost"). Drop opaque leaderboard scores unless you can explain them in one short plain-English clause.
+- description: max 2 sentences. What it is and what's new — nothing more.
+- why_trending: max 1 sentence. One clear reason: a viral post, a notable person, a surprising result.
+
+For evidence: preserve tweet URLs from Source 1 and article URLs from Source 2 as-is.
+For @handles in why_trending: always use the @handle format so they can be hyperlinked.
+
+Return ONLY valid JSON matching this exact schema (no markdown fences):
+{
+  "items": [
+    {
+      "name": "<exact tool/model name>",
+      "category": "<Coding Agent | Image/Video Generation | World Models | Model | Reasoning Model | Multimodal | Design Tools | Voice & Audio | Search & Research | Data & Analytics | Agents & Automation | Developer Tools | Enterprise Platform | Consumer App>",
+      "type": "<New launch | Existing tool surging | New benchmark/discovery>",
+      "description": "<max 2 sentences: what it is and what's new>",
+      "why_trending": "<max 1 sentence: the single clearest reason it's trending. Use @handles for X users.>",
+      "evidence": [
+        { "text": "<quote or concrete observation>", "author": "<@handle or publication name>", "url": "<URL or null>" }
+      ],
+      "links": ["<real URLs>"]
+    }
+  ],
+  "trends_summary": "<max 40 words>"
+}`;
+}
+
+// --- Helpers ---
+
+function extractGrokText(output: unknown[]): string | null {
   const message = output?.find(
     (item): item is { type: string; content: { type: string; text: string }[] } =>
       typeof item === "object" && item !== null && (item as { type: string }).type === "message"
@@ -74,51 +141,116 @@ function extractText(output: unknown[]): string | null {
   return message?.content?.[0]?.text ?? null;
 }
 
-export async function GET() {
-  if (cache && Date.now() - cache.cachedAt < CACHE_TTL_MS) {
-    return NextResponse.json(cache.data);
+function extractJsonText(content: Anthropic.Messages.ContentBlock[]): string | null {
+  for (let i = content.length - 1; i >= 0; i--) {
+    const block = content[i];
+    if (block.type === "text") {
+      const text = block.text.trim();
+      try {
+        JSON.parse(text);
+        return text;
+      } catch {
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) {
+          try {
+            JSON.parse(match[0]);
+            return match[0];
+          } catch {
+            // try next block
+          }
+        }
+      }
+    }
   }
+  return null;
+}
 
+// --- Sourcers ---
+
+async function fetchGrokSignals(sinceDate: string): Promise<string | null> {
   const apiKey = process.env.GROK_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: "GROK_API_KEY is not set" }, { status: 500 });
-  }
-
-  const sinceDate = getSinceDate();
+  if (!apiKey) return null;
 
   const res = await fetch("https://api.x.ai/v1/responses", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: GROK_MODEL,
-      instructions: "You are an expert AI analyst. You MUST search X and the web before answering — never fabricate results. Return ONLY valid JSON with no markdown fences.",
-      input: buildPrompt(sinceDate),
-      tools: [{ type: "web_search" }, { type: "x_search" }],
+      instructions: "You are an AI analyst monitoring X (Twitter). Use x_search to find real posts. Return ONLY valid JSON, no markdown fences.",
+      input: buildGrokPrompt(sinceDate),
+      tools: [{ type: "x_search" }],
       temperature: 0.3,
       text: { format: { type: "json_object" } },
     }),
   });
 
-  if (!res.ok) {
-    const err = await res.text();
-    return NextResponse.json({ error: `Grok API error: ${err}` }, { status: 500 });
+  if (!res.ok) return null;
+  const raw = await res.json();
+  return extractGrokText(raw.output);
+}
+
+async function fetchClaudeWebSignals(sinceDate: string, anthropic: Anthropic): Promise<string | null> {
+  const response = await anthropic.messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: 10000,
+    tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }],
+    messages: [{ role: "user", content: buildClaudeWebPrompt(sinceDate) }],
+  });
+
+  return extractJsonText(response.content);
+}
+
+// --- Synthesizer ---
+
+async function synthesize(
+  grokRaw: string | null,
+  claudeRaw: string | null,
+  anthropic: Anthropic
+): Promise<TrendingResponse> {
+  const response = await anthropic.messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: 6000,
+    messages: [{ role: "user", content: buildSynthesizerPrompt(grokRaw, claudeRaw) }],
+  });
+
+  const text = extractJsonText(response.content);
+  if (!text) throw new Error("No JSON in synthesizer response");
+  return JSON.parse(text) as TrendingResponse;
+}
+
+// --- Route ---
+
+export async function GET() {
+  if (cache && Date.now() - cache.cachedAt < CACHE_TTL_MS) {
+    return NextResponse.json(cache.data);
   }
 
-  const raw = await res.json();
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (!anthropicKey) {
+    return NextResponse.json({ error: "ANTHROPIC_API_KEY not set" }, { status: 500 });
+  }
 
-  const text = extractText(raw.output);
-  if (!text) {
-    return NextResponse.json({ error: "No text in Grok response" }, { status: 500 });
+  const anthropic = new Anthropic({ apiKey: anthropicKey });
+  const sinceDate = getSinceDate();
+
+  const [grokResult, claudeResult] = await Promise.allSettled([
+    fetchGrokSignals(sinceDate),
+    fetchClaudeWebSignals(sinceDate, anthropic),
+  ]);
+
+  const grokRaw = grokResult.status === "fulfilled" ? grokResult.value : null;
+  const claudeRaw = claudeResult.status === "fulfilled" ? claudeResult.value : null;
+
+  if (!grokRaw && !claudeRaw) {
+    return NextResponse.json({ error: "Both sourcing models failed" }, { status: 500 });
   }
 
   let parsed: TrendingResponse;
   try {
-    parsed = JSON.parse(text) as TrendingResponse;
-  } catch {
-    return NextResponse.json({ error: "Grok returned invalid JSON" }, { status: 500 });
+    parsed = await synthesize(grokRaw, claudeRaw, anthropic);
+  } catch (err) {
+    console.error("[trending] synthesizer error:", err);
+    return NextResponse.json({ error: "Synthesizer failed to produce valid output" }, { status: 500 });
   }
 
   cache = { data: parsed, cachedAt: Date.now() };

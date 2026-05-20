@@ -11,7 +11,7 @@ interface SearchFiltersProps {
 export default function SearchFilters({ hasChatGPT, hasClaude, freeOnly, onChange, disabled }: SearchFiltersProps) {
   return (
     <div className="mt-5">
-      <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">Focus your search</p>
+      <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Focus your search</p>
       <div className="flex flex-col gap-2">
         <Checkbox
           id="chatgpt"
@@ -69,7 +69,7 @@ function Checkbox({ id, label, checked, onChange, disabled }: {
           </svg>
         )}
       </div>
-      <span className="text-sm text-neutral-400 group-hover:text-neutral-300 transition-colors select-none">{label}</span>
+      <span className="text-sm text-neutral-300 group-hover:text-white transition-colors select-none">{label}</span>
     </label>
   );
 }

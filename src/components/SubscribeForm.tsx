@@ -33,36 +33,40 @@ export default function SubscribeForm() {
 
   if (state === "success") {
     return (
-      <p className="text-xs text-green-400 text-center py-1">
-        ✓ You&apos;re on the list! We&apos;ll send the weekly AI report to your inbox.
+      <p className="text-sm text-green-400 py-1">
+        ✓ You&apos;re on the list! We&apos;ll send the weekly digest to your inbox.
       </p>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
-      <input
-        type="email"
-        value={email}
-        onChange={(e) => { setEmail(e.target.value); setState("idle"); }}
-        placeholder="your@email.com"
-        required
-        className="flex-1 min-w-0 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-500 transition-colors"
-      />
-      <button
-        type="submit"
-        disabled={state === "loading"}
-        className="bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 shrink-0"
-      >
-        {state === "loading" ? "…" : "Subscribe"}
-      </button>
-
+    <div>
+      <p className="text-sm text-neutral-300 mb-3">
+        Enjoyed reading this report? Join the waitlist for a weekly digest sent directly to your email:
+      </p>
+      <form onSubmit={handleSubmit} className="flex gap-2">
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => { setEmail(e.target.value); setState("idle"); }}
+          placeholder="your@email.com"
+          required
+          className="flex-1 min-w-0 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500 transition-colors"
+        />
+        <button
+          type="submit"
+          disabled={state === "loading"}
+          className="bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50 shrink-0"
+        >
+          {state === "loading" ? "…" : "Join waitlist"}
+        </button>
+      </form>
       {state === "duplicate" && (
-        <span className="absolute text-xs text-amber-400 mt-8">Already subscribed.</span>
+        <p className="text-xs text-amber-400 mt-2">You&apos;re already on the list.</p>
       )}
       {state === "error" && (
-        <span className="absolute text-xs text-red-400 mt-8">Something went wrong.</span>
+        <p className="text-xs text-red-400 mt-2">Something went wrong. Please try again.</p>
       )}
-    </form>
+    </div>
   );
 }

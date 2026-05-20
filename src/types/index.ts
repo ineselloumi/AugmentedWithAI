@@ -2,6 +2,8 @@ export interface TaskTool {
   name: string;
   description: string;
   free_tier: "free_trial" | "free_plan" | null;
+  url: string | null;
+  is_chatbot: boolean;
 }
 
 export interface Task {

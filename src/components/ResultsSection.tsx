@@ -23,10 +23,10 @@ export default function ResultsSection({
       <div className="mb-2">
         <h2 className="text-xl font-bold text-white">
           Top automation opportunities
-          {role && <span className="text-neutral-400"> for: "{role}"</span>}
+          {role && <span className="text-neutral-300"> for: "{role}"</span>}
         </h2>
       </div>
-      <p className="text-xs text-neutral-500 mb-4">
+      <p className="text-xs text-neutral-400 mb-4">
         These estimations are based on general work data and may vary depending on your employer or
         work environment.
       </p>
@@ -38,8 +38,9 @@ export default function ResultsSection({
               <TaskCard
                 key={task.id}
                 rank={idx + 1}
+                role={role}
                 task={task}
-                tools={toolsMap[task.id] ?? undefined}
+                tools={toolsMap[task.id]}
                 isLoadingTools={loadingTools[task.id] ?? false}
                 freeOnly={freeOnly}
               />

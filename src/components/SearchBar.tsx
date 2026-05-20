@@ -26,7 +26,7 @@ export default function SearchBar({ value, onChange, onSubmit, onSelectRole, qui
       }}
       className="relative w-full"
     >
-      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500 z-10">
+      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 z-10">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="11" cy="11" r="8" />
           <path d="m21 21-4.35-4.35" />
@@ -45,7 +45,7 @@ export default function SearchBar({ value, onChange, onSubmit, onSelectRole, qui
       />
       {showDropdown && (
         <ul className="absolute z-20 top-full mt-2 w-full bg-neutral-900 border border-neutral-700 rounded-2xl overflow-hidden shadow-xl">
-          <li className="px-4 pt-3 pb-1 text-xs font-semibold text-neutral-500 uppercase tracking-wider select-none">Frequent searches</li>
+          <li className="px-4 pt-3 pb-1 text-xs font-semibold text-neutral-400 uppercase tracking-wider select-none">Frequent searches</li>
           {quickRoles.map((role) => (
             <li key={role}>
               <button

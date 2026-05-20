@@ -102,9 +102,9 @@ export default function Home() {
         {/* Header */}
         <p className="text-green-400 text-sm font-semibold mb-3">AI Discovery</p>
         <h1 className="text-4xl font-bold text-white leading-tight mb-3">
-          <span className="underline decoration-white underline-offset-4">Find AI tools</span> for your role
+          <span className="underline decoration-white underline-offset-4">Multiply your impact</span> at work
         </h1>
-        <p className="text-neutral-400 text-sm leading-relaxed mb-7">
+        <p className="text-neutral-300 text-sm leading-relaxed mb-7">
           Search your job title to discover high-leverage automations
         </p>
 
