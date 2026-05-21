@@ -39,8 +39,8 @@ export class AnthropicProvider implements LLMProvider {
   async analyzeRole(role: string): Promise<RoleAnalysisResponse> {
     const response = await this.client.messages.create({
       model: MODEL,
-      max_tokens: 2048,
-      system: ANALYZE_ROLE_SYSTEM,
+      max_tokens: 1000,
+      system: [{ type: "text", text: ANALYZE_ROLE_SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: analyzeRoleUserPrompt(role) }],
     });
 
@@ -72,9 +72,9 @@ export class AnthropicProvider implements LLMProvider {
     const response = await this.client.messages.create({
       model: MODEL,
       max_tokens: 1024,
-      system: TOOLS_SYSTEM,
+      system: [{ type: "text", text: TOOLS_SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: toolsUserPrompt(role, taskTitle, taskDescription, subscriptions) }],
-      tools: [{ type: "web_search_20250305", name: "web_search" }],
+      tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 2 }],
     });
 
     const rawText = extractJson(lastTextBlock(response.content));
