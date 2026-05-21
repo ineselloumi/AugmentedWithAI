@@ -8,7 +8,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("trending_cache")
-    .select("data")
+    .select("data, refreshed_at")
     .eq("id", 1)
     .single();
 
@@ -16,5 +16,5 @@ export async function GET() {
     return NextResponse.json({ error: "no_data" }, { status: 503 });
   }
 
-  return NextResponse.json(data.data);
+  return NextResponse.json({ ...data.data, refreshed_at: data.refreshed_at });
 }

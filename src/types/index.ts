@@ -42,4 +42,5 @@ export interface TrendingItem {
 export interface TrendingResponse {
   items: TrendingItem[];
   trends_summary: string;
+  refreshed_at?: string;
 }

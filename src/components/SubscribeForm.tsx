@@ -33,8 +33,8 @@ export default function SubscribeForm() {
 
   if (state === "success") {
     return (
-      <p className="text-sm text-green-400 py-1">
-        ✓ You&apos;re on the list! We&apos;ll send the weekly digest to your inbox.
+      <p className="text-sm text-white py-1">
+        ✓ You&apos;re on the list! You will be notified when we release the weekly digest.
       </p>
     );
   }

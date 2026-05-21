@@ -4,6 +4,15 @@ import { useEffect, useState } from "react";
 import type { EvidenceItem, TrendingItem, TrendingResponse } from "@/types";
 import SubscribeForm from "./SubscribeForm";
 
+function formatRefreshedAt(iso: string): string {
+  const d = new Date(iso);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  return `${mm}/${dd} at ${hh}:${min}`;
+}
+
 function renderWithInlineLinks(text: string, evidence: EvidenceItem[], toolName: string) {
   const parts = text.split(/(@\w+)/g);
   return parts.map((part, i) => {
@@ -41,7 +50,11 @@ export default function TrendingPanel() {
       <div className="flex items-center gap-2 mb-4">
         <span className="text-lg">𝕏</span>
         <h2 className="text-sm font-semibold text-white">Trending on X.com</h2>
-        <span className="text-xs text-neutral-400 ml-auto">last 7 days</span>
+        {data?.refreshed_at && (
+          <span className="text-xs text-neutral-400 ml-auto">
+            Last updated {formatRefreshedAt(data.refreshed_at)}
+          </span>
+        )}
       </div>
 
       {loading && <SkeletonList />}
@@ -55,6 +68,7 @@ export default function TrendingPanel() {
           {data.trends_summary && (
             <div className="mb-1">
               <p className="text-xs font-semibold text-neutral-300 mb-1">This week in AI</p>
+              <p className="text-xs text-neutral-500 mb-1">This report is AI generated and may contain inaccuracies.</p>
               <p className="text-xs text-neutral-400 leading-relaxed">
                 {data.trends_summary.split(/\s+/).slice(0, 40).join(" ")}
               </p>
