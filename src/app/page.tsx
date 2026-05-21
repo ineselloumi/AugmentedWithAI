@@ -5,6 +5,7 @@ import type { Task, TaskTool } from "@/types";
 import SearchBar from "@/components/SearchBar";
 import ResultsSection from "@/components/ResultsSection";
 import TrendingPanel from "@/components/TrendingPanel";
+import TrendingDrawer from "@/components/TrendingDrawer";
 
 const QUICK_ROLES = ["Product Manager", "Software Engineer", "Data Analyst", "Marketing Manager"];
 
@@ -95,7 +96,12 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] flex flex-col lg:flex-row gap-10 items-start px-4 pt-14 pb-20">
+    <main className="min-h-screen bg-[#0a0a0a] flex flex-row gap-10 items-start px-4 pt-14 pb-20">
+      {/* Mobile drawer — only rendered on small screens */}
+      <div className="lg:hidden">
+        <TrendingDrawer />
+      </div>
+
       <div className="flex-1 flex justify-center w-full">
       <div className="w-full max-w-2xl">
         {/* Header */}
@@ -135,7 +141,8 @@ export default function Home() {
         )}
       </div>
       </div>
-      <div className="w-full lg:w-[480px] shrink-0 lg:sticky lg:top-8 lg:pr-2">
+      {/* Desktop sidebar — only rendered on large screens */}
+      <div className="hidden lg:block w-[480px] shrink-0 sticky top-8 pr-2">
         <TrendingPanel />
       </div>
     </main>

@@ -34,7 +34,7 @@ function renderWithInlineLinks(text: string, evidence: EvidenceItem[], toolName:
   });
 }
 
-export default function TrendingPanel() {
+export default function TrendingPanel({ hideHeader = false }: { hideHeader?: boolean }) {
   const [data, setData] = useState<TrendingResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -49,16 +49,20 @@ export default function TrendingPanel() {
 
   return (
     <aside className="w-full">
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-lg">𝕏</span>
-        <h2 className="text-sm font-semibold text-white">Trending on X.com</h2>
-        {data?.refreshed_at && (
-          <span className="text-xs text-neutral-400 ml-auto">
-            Last updated {formatRefreshedAt(data.refreshed_at)}
-          </span>
-        )}
-      </div>
-      <p className="text-xs text-neutral-500 mb-4">This report is AI generated and may contain inaccuracies.</p>
+      {!hideHeader && (
+        <>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">𝕏</span>
+            <h2 className="text-sm font-semibold text-white">Trending on X.com</h2>
+            {data?.refreshed_at && (
+              <span className="text-xs text-neutral-400 ml-auto">
+                Last updated {formatRefreshedAt(data.refreshed_at)}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-neutral-500 mb-4">This report is AI generated and may contain inaccuracies.</p>
+        </>
+      )}
 
       {loading && <SkeletonList />}
 
