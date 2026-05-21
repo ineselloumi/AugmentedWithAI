@@ -3,7 +3,6 @@
 import { useState } from "react";
 import type { Task, TaskTool } from "@/types";
 import SearchBar from "@/components/SearchBar";
-import SearchFilters from "@/components/SearchFilters";
 import ResultsSection from "@/components/ResultsSection";
 import TrendingPanel from "@/components/TrendingPanel";
 
@@ -96,16 +95,16 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] flex gap-10 items-start px-4 pt-14 pb-20">
-      <div className="flex-1 flex justify-center">
+    <main className="min-h-screen bg-[#0a0a0a] flex flex-col lg:flex-row gap-10 items-start px-4 pt-14 pb-20">
+      <div className="flex-1 flex justify-center w-full">
       <div className="w-full max-w-2xl">
         {/* Header */}
-        <p className="text-green-400 text-sm font-semibold mb-3">AI Discovery</p>
+        <p className="text-neutral-400 text-sm font-semibold mb-3">FIND YOUR EDGE WITH AI</p>
         <h1 className="text-4xl font-bold text-white leading-tight mb-3">
           <span className="underline decoration-white underline-offset-4">Multiply your impact</span> at work
         </h1>
         <p className="text-neutral-300 text-sm leading-relaxed mb-7">
-          Search your job title to discover high-leverage automations
+          Type in your job title to see a detailed report on responsibilities and the best tools to optimize them. These tools have the potential to accomplish the work faster, increase its quality, or both.
         </p>
 
         {/* Search */}
@@ -116,14 +115,6 @@ export default function Home() {
           onSelectRole={(role) => handleSearch(role)}
           quickRoles={QUICK_ROLES}
           isLoading={isLoading}
-        />
-
-        <SearchFilters
-          hasChatGPT={hasChatGPT}
-          hasClaude={hasClaude}
-          freeOnly={freeOnly}
-          onChange={handleFilterChange}
-          disabled={isLoading}
         />
 
         {error && (
@@ -144,7 +135,7 @@ export default function Home() {
         )}
       </div>
       </div>
-      <div className="w-[480px] shrink-0 sticky top-8 hidden lg:block pr-2">
+      <div className="w-full lg:w-[480px] shrink-0 lg:sticky lg:top-8 lg:pr-2">
         <TrendingPanel />
       </div>
     </main>

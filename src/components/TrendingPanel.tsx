@@ -8,9 +8,11 @@ function formatRefreshedAt(iso: string): string {
   const d = new Date(iso);
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
+  let hours = d.getHours();
   const min = String(d.getMinutes()).padStart(2, "0");
-  return `${mm}/${dd} at ${hh}:${min}`;
+  const ampm = hours >= 12 ? "pm" : "am";
+  hours = hours % 12 || 12;
+  return `${mm}/${dd} at ${hours}:${min}${ampm}`;
 }
 
 function renderWithInlineLinks(text: string, evidence: EvidenceItem[], toolName: string) {
@@ -47,7 +49,7 @@ export default function TrendingPanel() {
 
   return (
     <aside className="w-full">
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-1">
         <span className="text-lg">𝕏</span>
         <h2 className="text-sm font-semibold text-white">Trending on X.com</h2>
         {data?.refreshed_at && (
@@ -56,6 +58,7 @@ export default function TrendingPanel() {
           </span>
         )}
       </div>
+      <p className="text-xs text-neutral-500 mb-4">This report is AI generated and may contain inaccuracies.</p>
 
       {loading && <SkeletonList />}
 
@@ -68,7 +71,6 @@ export default function TrendingPanel() {
           {data.trends_summary && (
             <div className="mb-1">
               <p className="text-xs font-semibold text-neutral-300 mb-1">This week in AI</p>
-              <p className="text-xs text-neutral-500 mb-1">This report is AI generated and may contain inaccuracies.</p>
               <p className="text-xs text-neutral-400 leading-relaxed">
                 {data.trends_summary.split(/\s+/).slice(0, 40).join(" ")}
               </p>

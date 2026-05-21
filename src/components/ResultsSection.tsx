@@ -22,8 +22,9 @@ export default function ResultsSection({
     <section className="w-full mt-10">
       <div className="mb-2">
         <h2 className="text-xl font-bold text-white">
-          Top automation opportunities
-          {role && <span className="text-neutral-300"> for: "{role}"</span>}
+          {role
+            ? <>How to get more leverage as a <span className="text-neutral-300">{role}</span></>
+            : "How to get more leverage"}
         </h2>
       </div>
       <p className="text-xs text-neutral-400 mb-4">
