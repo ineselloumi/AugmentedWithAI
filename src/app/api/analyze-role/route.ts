@@ -20,13 +20,13 @@ export async function POST(req: NextRequest) {
 
   const trimmedRole = role.trim();
 
-  const cached = getCached(trimmedRole);
+  const cached = await getCached(trimmedRole);
   if (cached) return NextResponse.json(cached);
 
   try {
     const provider = getProvider();
     const result = await provider.analyzeRole(trimmedRole);
-    setCached(trimmedRole, result);
+    await setCached(trimmedRole, result);
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
