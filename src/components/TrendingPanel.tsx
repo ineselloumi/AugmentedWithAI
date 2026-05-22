@@ -15,23 +15,65 @@ function formatRefreshedAt(iso: string): string {
   return `${mm}/${dd} at ${hours}:${min}${ampm}`;
 }
 
-function renderWithInlineLinks(text: string, evidence: EvidenceItem[], toolName: string) {
-  const parts = text.split(/(@\w+)/g);
-  return parts.map((part, i) => {
+const LINK_CLASS = "text-neutral-300 hover:text-white underline underline-offset-2 decoration-neutral-600 hover:decoration-neutral-300 transition-colors";
+
+function renderWithInlineLinks(text: string, evidence: EvidenceItem[], toolName: string): React.ReactNode {
+  // Article sources: non-@ authors with a real URL
+  const articleSources = evidence.filter(
+    (e) => e.author && !e.author.startsWith("@") && e.url
+  );
+
+  // Split on @handles first
+  const atParts = text.split(/(@\w+)/g);
+  const nodes: React.ReactNode[] = [];
+
+  atParts.forEach((part, i) => {
     if (part.startsWith("@")) {
       const ev = evidence.find((e) => e.author === part);
-      const url = ev
-        ? evidenceLink(ev, toolName)
-        : `https://x.com/${part.slice(1)}`;
-      return (
-        <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-          className="text-neutral-300 hover:text-white underline underline-offset-2 decoration-neutral-500 hover:decoration-neutral-300 transition-colors">
+      const url = ev ? evidenceLink(ev, toolName) : `https://x.com/${part.slice(1)}`;
+      nodes.push(
+        <a key={`at-${i}`} href={url} target="_blank" rel="noopener noreferrer" className={LINK_CLASS}>
           {part}
         </a>
       );
+      return;
     }
-    return part;
+
+    // Within plain text, find and link any article source names verbatim
+    if (articleSources.length === 0) {
+      nodes.push(part);
+      return;
+    }
+
+    let remaining = part;
+    let offset = 0;
+    const segNodes: React.ReactNode[] = [];
+
+    while (remaining.length > 0) {
+      let earliest: { idx: number; src: typeof articleSources[0] } | null = null;
+      for (const src of articleSources) {
+        const idx = remaining.indexOf(src.author!);
+        if (idx !== -1 && (earliest === null || idx < earliest.idx)) {
+          earliest = { idx, src };
+        }
+      }
+      if (!earliest) {
+        segNodes.push(remaining);
+        break;
+      }
+      if (earliest.idx > 0) segNodes.push(remaining.slice(0, earliest.idx));
+      segNodes.push(
+        <a key={`art-${i}-${offset}`} href={earliest.src.url!} target="_blank" rel="noopener noreferrer" className={LINK_CLASS}>
+          {earliest.src.author}
+        </a>
+      );
+      remaining = remaining.slice(earliest.idx + earliest.src.author!.length);
+      offset++;
+    }
+    nodes.push(...segNodes);
   });
+
+  return <>{nodes}</>;
 }
 
 export default function TrendingPanel({ hideHeader = false }: { hideHeader?: boolean }) {
@@ -39,13 +81,25 @@ export default function TrendingPanel({ hideHeader = false }: { hideHeader?: boo
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  useEffect(() => {
-    fetch("/api/trending")
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d: TrendingResponse) => setData(d))
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
-  }, []);
+  async function loadTrending(attempt = 1) {
+    try {
+      const r = await fetch("/api/trending");
+      if (!r.ok) throw new Error(`${r.status}`);
+      const d: TrendingResponse = await r.json();
+      setData(d);
+      setError(false);
+    } catch {
+      if (attempt < 3) {
+        setTimeout(() => loadTrending(attempt + 1), attempt * 2000);
+      } else {
+        setError(true);
+      }
+    } finally {
+      if (attempt === 1) setLoading(false);
+    }
+  }
+
+  useEffect(() => { loadTrending(); }, []);
 
   return (
     <aside className="w-full">
@@ -67,7 +121,15 @@ export default function TrendingPanel({ hideHeader = false }: { hideHeader?: boo
       {loading && <SkeletonList />}
 
       {error && (
-        <p className="text-xs text-neutral-400">Could not load trending data.</p>
+        <div className="text-xs text-neutral-400">
+          <p>Could not load trending data.</p>
+          <button
+            onClick={() => { setError(false); setLoading(true); loadTrending(); }}
+            className="mt-1 underline hover:text-white transition-colors"
+          >
+            Try again
+          </button>
+        </div>
       )}
 
       {data && (
@@ -147,7 +209,9 @@ function TrendingCard({ item }: { rank: number; item: TrendingItem }) {
             </span>
           </div>
 
-          <p className="text-xs text-neutral-300 leading-relaxed">{item.description}</p>
+          <p className="text-xs text-neutral-300 leading-relaxed">
+            {renderWithInlineLinks(item.description, evidence, item.name)}
+          </p>
 
           {item.why_trending && (
             <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
