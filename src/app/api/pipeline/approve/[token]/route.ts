@@ -1,8 +1,10 @@
-import { NextResponse } from "next/server";
 import { loadReport, updateReportStatus, getSubscribers } from "@/services/pipeline/store";
 import { sendSubscriberReport } from "@/services/pipeline/email";
 
-export async function GET(
+// POST-only. GET would be triggered by email link-previewers, antivirus
+// scanners, and browser prefetchers — which would auto-send the report
+// to subscribers before the human has read it.
+export async function POST(
   _req: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
@@ -28,9 +30,7 @@ export async function GET(
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return new Response(`Error: ${message}`, { status: 500, headers: { "Content-Type": "text/plain" } });
+    console.error("[pipeline/approve]", message);
+    return new Response("Internal server error", { status: 500, headers: { "Content-Type": "text/plain" } });
   }
 }
-
-// Also allow POST for programmatic calls
-export { GET as POST };

@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { loadReport, updateReportStatus } from "@/services/pipeline/store";
 
-export async function GET(
+// POST-only — see approve route for rationale.
+export async function POST(
   _req: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
@@ -18,5 +18,3 @@ export async function GET(
   updateReportStatus(report.id, "discarded");
   return new Response("✕ Report discarded.", { status: 200, headers: { "Content-Type": "text/plain" } });
 }
-
-export { GET as POST };

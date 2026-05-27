@@ -10,13 +10,15 @@ import type { PendingReport } from "@/services/pipeline/types";
 export const maxDuration = 300; // 5 min — pipeline is slow
 
 export async function POST(req: Request) {
-  // Authenticate with pipeline secret
+  // Authenticate with pipeline secret — fail closed if the secret isn't set.
   const secret = process.env.PIPELINE_SECRET;
-  if (secret) {
-    const auth = req.headers.get("x-pipeline-secret");
-    if (auth !== secret) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!secret) {
+    console.error("[pipeline] PIPELINE_SECRET not configured — refusing request");
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const auth = req.headers.get("x-pipeline-secret");
+  if (auth !== secret) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { searchParams } = new URL(req.url);
@@ -79,6 +81,6 @@ export async function POST(req: Request) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[pipeline] Error:", message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

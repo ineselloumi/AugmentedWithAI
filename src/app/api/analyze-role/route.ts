@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProvider } from "@/services/llm";
 import { getCached, setCached } from "@/lib/roleCache";
+import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
+import { serverError } from "@/lib/errors";
+
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
+  const rl = rateLimit(req, { key: "analyze-role", limit: 10, windowSec: 60 });
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSec);
+
   let body: unknown;
   try {
     body = await req.json();
@@ -29,7 +36,6 @@ export async function POST(req: NextRequest) {
     await setCached(trimmedRole, result);
     return NextResponse.json(result);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError("analyze-role", err);
   }
 }

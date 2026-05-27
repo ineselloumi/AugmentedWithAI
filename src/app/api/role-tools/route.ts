@@ -1,8 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProvider } from "@/services/llm";
 import { getToolsCached, setToolsCached } from "@/lib/toolsCache";
+import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
+import { serverError } from "@/lib/errors";
+
+export const maxDuration = 60;
+
+const LIMITS = {
+  role: 100,
+  taskTitle: 200,
+  taskDescription: 1000,
+  taskId: 100,
+};
+
+function validString(v: unknown, max: number): string | null {
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  if (t.length === 0 || t.length > max) return null;
+  return t;
+}
 
 export async function POST(req: NextRequest) {
+  const rl = rateLimit(req, { key: "role-tools", limit: 10, windowSec: 60 });
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSec);
+
   let body: unknown;
   try {
     body = await req.json();
@@ -12,37 +33,27 @@ export async function POST(req: NextRequest) {
 
   const { role, taskTitle, taskDescription, taskId } = body as Record<string, unknown>;
 
-  if (!role || typeof role !== "string" || role.trim().length === 0) {
-    return NextResponse.json({ error: "role is required" }, { status: 400 });
-  }
-  if (!taskTitle || typeof taskTitle !== "string") {
-    return NextResponse.json({ error: "taskTitle is required" }, { status: 400 });
-  }
-  if (!taskDescription || typeof taskDescription !== "string") {
-    return NextResponse.json({ error: "taskDescription is required" }, { status: 400 });
-  }
-  if (!taskId || typeof taskId !== "string") {
-    return NextResponse.json({ error: "taskId is required" }, { status: 400 });
+  const trimmedRole = validString(role, LIMITS.role);
+  const trimmedTitle = validString(taskTitle, LIMITS.taskTitle);
+  const trimmedDescription = validString(taskDescription, LIMITS.taskDescription);
+  const trimmedTaskId = validString(taskId, LIMITS.taskId);
+
+  if (!trimmedRole || !trimmedTitle || !trimmedDescription || !trimmedTaskId) {
+    return NextResponse.json(
+      { error: "Missing or invalid fields (role ≤100, taskTitle ≤200, taskDescription ≤1000, taskId ≤100)" },
+      { status: 400 },
+    );
   }
 
-  const trimmedRole = role.trim();
-
-  // Check tools cache first
-  const cached = await getToolsCached(trimmedRole, taskId);
+  const cached = await getToolsCached(trimmedRole, trimmedTaskId);
   if (cached) return NextResponse.json(cached);
 
-  // Cache miss — generate and store
   try {
     const provider = getProvider();
-    const result = await provider.getToolsForTask(
-      trimmedRole,
-      taskTitle.trim(),
-      taskDescription.trim(),
-    );
-    await setToolsCached(trimmedRole, taskId, result);
+    const result = await provider.getToolsForTask(trimmedRole, trimmedTitle, trimmedDescription);
+    await setToolsCached(trimmedRole, trimmedTaskId, result);
     return NextResponse.json(result);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return serverError("role-tools", err);
   }
 }

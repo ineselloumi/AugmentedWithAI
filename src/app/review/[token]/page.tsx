@@ -81,7 +81,6 @@ export default async function ReviewPage({
 
   if (!report) notFound();
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
   const approveUrl = `/api/pipeline/approve/${token}`;
   const discardUrl = `/api/pipeline/discard/${token}`;
 
@@ -112,21 +111,26 @@ export default async function ReviewPage({
           </div>
         </div>
 
-        {/* Action buttons — only shown when pending */}
+        {/* Action buttons — only shown when pending. Forms use POST so email
+            link-previewers and antivirus scanners can't auto-trigger them. */}
         {report.status === "pending" && (
           <div className="flex gap-3 mb-8">
-            <a
-              href={approveUrl}
-              className="flex items-center gap-2 bg-green-700 hover:bg-green-600 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors"
-            >
-              ✓ Approve &amp; Send to subscribers
-            </a>
-            <a
-              href={discardUrl}
-              className="flex items-center gap-2 bg-neutral-800 hover:bg-red-900 text-neutral-300 hover:text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors"
-            >
-              ✕ Discard
-            </a>
+            <form action={approveUrl} method="POST">
+              <button
+                type="submit"
+                className="flex items-center gap-2 bg-green-700 hover:bg-green-600 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors"
+              >
+                ✓ Approve &amp; Send to subscribers
+              </button>
+            </form>
+            <form action={discardUrl} method="POST">
+              <button
+                type="submit"
+                className="flex items-center gap-2 bg-neutral-800 hover:bg-red-900 text-neutral-300 hover:text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors"
+              >
+                ✕ Discard
+              </button>
+            </form>
           </div>
         )}
 

@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import type { PendingReport, ReportItem } from "./types";
+import { signUnsubscribeToken } from "@/lib/unsubscribeToken";
 
 function getResend(): Resend {
   const key = process.env.RESEND_API_KEY;
@@ -54,8 +55,6 @@ export async function sendReviewEmail(report: PendingReport): Promise<void> {
   if (!fromEmail) throw new Error("FROM_EMAIL is not set");
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-  const approveUrl = `${baseUrl}/api/pipeline/approve/${report.token}`;
-  const discardUrl = `${baseUrl}/api/pipeline/discard/${report.token}`;
   const reviewUrl = `${baseUrl}/review/${report.token}`;
 
   const itemsHtml = report.items.map((item, i) => itemToReviewHtml(item, i)).join("");
@@ -79,16 +78,13 @@ export async function sendReviewEmail(report: PendingReport): Promise<void> {
     </p>
   </div>
 
-  <div style="display:flex;gap:12px;margin-bottom:24px;">
-    <a href="${reviewUrl}" style="background:#1f2937;color:#f9fafb;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">
-      📋 Full Review Page
+  <div style="margin-bottom:24px;">
+    <a href="${reviewUrl}" style="background:#16a34a;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;display:inline-block;">
+      📋 Open Review Page to Approve or Discard
     </a>
-    <a href="${approveUrl}" style="background:#16a34a;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">
-      ✓ Approve &amp; Send
-    </a>
-    <a href="${discardUrl}" style="background:#7f1d1d;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">
-      ✕ Discard
-    </a>
+    <p style="color:#6b7280;font-size:12px;margin:8px 0 0 0;">
+      Approve and discard actions live on the review page so email scanners can't trigger them automatically.
+    </p>
   </div>
 
   ${itemsHtml}
@@ -145,7 +141,10 @@ export async function sendSubscriberReport(
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
   const itemsHtml = report.items.map((item, i) => itemToSubscriberHtml(item, i)).join("");
 
-  const html = `
+  function buildHtml(email: string): string {
+    const token = signUnsubscribeToken(email);
+    const unsubscribeUrl = `${baseUrl}/unsubscribe?email=${encodeURIComponent(email)}&token=${token}`;
+    return `
 <!DOCTYPE html>
 <html>
 <body style="background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:24px;max-width:600px;margin:0 auto;">
@@ -159,14 +158,15 @@ export async function sendSubscriberReport(
   <div style="margin-top:24px;padding-top:16px;border-top:1px solid #1f2937;text-align:center;">
     <a href="${baseUrl}" style="color:#22c55e;font-size:13px;text-decoration:none;font-weight:600;">augmentedwith.ai</a>
     <p style="color:#374151;font-size:11px;margin:8px 0 0 0;">
-      <a href="${baseUrl}/unsubscribe?email=%%EMAIL%%" style="color:#374151;">Unsubscribe</a>
+      <a href="${unsubscribeUrl}" style="color:#374151;">Unsubscribe</a>
     </p>
   </div>
 </body>
 </html>`;
+  }
 
-  // Send individually so each gets a personalized unsubscribe link
-  // For large lists this should use Resend's batch API — fine for now
+  // Send individually so each gets a personalized signed unsubscribe link.
+  // For large lists this should use Resend's batch API — fine for now.
   const BATCH_SIZE = 50;
   for (let i = 0; i < subscribers.length; i += BATCH_SIZE) {
     const batch = subscribers.slice(i, i + BATCH_SIZE);
@@ -176,7 +176,7 @@ export async function sendSubscriberReport(
           from: fromEmail,
           to: email,
           subject: `This week in AI — ${report.date}`,
-          html: html.replace("%%EMAIL%%", encodeURIComponent(email)),
+          html: buildHtml(email),
         })
       )
     );
