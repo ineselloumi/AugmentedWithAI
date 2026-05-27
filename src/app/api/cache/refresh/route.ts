@@ -4,7 +4,7 @@ import { setCached } from "@/lib/roleCache";
 import { setToolsCached } from "@/lib/toolsCache";
 import { ROLE_ALIASES } from "@/lib/roleAliases";
 
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 // Derive the unique set of canonical roles from the alias map
 const CANONICAL_ROLES = [...new Set(Object.values(ROLE_ALIASES))];
@@ -58,10 +58,15 @@ export async function GET(req: Request) {
 
   console.log(`[cache/refresh] Starting refresh of ${CANONICAL_ROLES.length} canonical roles`);
 
-  // Refresh all roles in parallel
-  const results = await Promise.allSettled(
-    CANONICAL_ROLES.map((role) => refreshRole(role))
-  );
+  // Refresh roles sequentially to avoid hitting Anthropic rate limits.
+  // Tasks within each role still run in parallel (max 5 simultaneous calls).
+  const results: PromiseSettledResult<{ role: string; tasks: number; tools: number; errors: string[] }>[] = [];
+  for (const role of CANONICAL_ROLES) {
+    results.push(await Promise.resolve(refreshRole(role)).then(
+      (v) => ({ status: "fulfilled" as const, value: v }),
+      (e) => ({ status: "rejected" as const, reason: e }),
+    ));
+  }
 
   const summary = results.map((r) =>
     r.status === "fulfilled"

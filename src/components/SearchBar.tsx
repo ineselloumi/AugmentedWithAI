@@ -41,7 +41,7 @@ export default function SearchBar({ value, onChange, onSubmit, onSelectRole, qui
         onBlur={() => setTimeout(() => setFocused(false), 150)}
         placeholder="Type your job title..."
         disabled={isLoading}
-        className="w-full pl-10 pr-4 py-3.5 rounded-2xl bg-neutral-800/70 border border-neutral-700 text-white placeholder-neutral-500 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-600 disabled:opacity-60"
+        className="w-full pl-10 pr-4 py-3.5 rounded-2xl bg-neutral-800/70 border border-neutral-700 text-white placeholder-neutral-500 text-base focus:outline-none focus:ring-2 focus:ring-neutral-600 disabled:opacity-60"
       />
       {showDropdown && (
         <ul className="absolute z-20 top-full mt-2 w-full bg-neutral-900 border border-neutral-700 rounded-2xl overflow-hidden shadow-xl">
