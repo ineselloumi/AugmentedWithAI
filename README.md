@@ -1,4 +1,4 @@
-# MultiplyMe
+# Augmented With AI
 
 **Discover the best AI tools for your job.**
 
