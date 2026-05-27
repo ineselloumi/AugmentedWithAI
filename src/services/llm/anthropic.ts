@@ -73,7 +73,7 @@ export class AnthropicProvider implements LLMProvider {
   ): Promise<ToolsResponse> {
     const response = await this.client.messages.create({
       model: MODELS.sonnet,
-      max_tokens: 1024,
+      max_tokens: 2048,
       system: [{ type: "text", text: TOOLS_SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: toolsUserPrompt(role, taskTitle, taskDescription) }],
       tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 2 }],
