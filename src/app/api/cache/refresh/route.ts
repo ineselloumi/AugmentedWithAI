@@ -4,7 +4,7 @@ import { getCached, setCached } from "@/lib/roleCache";
 import { getToolsCached, setToolsCached } from "@/lib/toolsCache";
 import { ROLE_ALIASES } from "@/lib/roleAliases";
 
-export const maxDuration = 800;
+export const maxDuration = 300;
 
 // Derive the unique set of canonical roles from the alias map
 const CANONICAL_ROLES = [...new Set(Object.values(ROLE_ALIASES))];
