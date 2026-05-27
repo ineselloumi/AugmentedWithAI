@@ -218,13 +218,11 @@ async function synthesize(
 
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
-  if (!secret) {
-    console.error("[trending/refresh] CRON_SECRET not configured — refusing request");
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (secret) {
+    const auth = req.headers.get("authorization");
+    if (auth !== `Bearer ${secret}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
   }
 
   if (!supabase) {

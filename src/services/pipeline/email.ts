@@ -1,6 +1,5 @@
 import { Resend } from "resend";
 import type { PendingReport, ReportItem } from "./types";
-import { signUnsubscribeToken } from "@/lib/unsubscribeToken";
 
 function getResend(): Resend {
   const key = process.env.RESEND_API_KEY;
@@ -141,10 +140,7 @@ export async function sendSubscriberReport(
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
   const itemsHtml = report.items.map((item, i) => itemToSubscriberHtml(item, i)).join("");
 
-  function buildHtml(email: string): string {
-    const token = signUnsubscribeToken(email);
-    const unsubscribeUrl = `${baseUrl}/unsubscribe?email=${encodeURIComponent(email)}&token=${token}`;
-    return `
+  const html = `
 <!DOCTYPE html>
 <html>
 <body style="background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:24px;max-width:600px;margin:0 auto;">
@@ -158,14 +154,13 @@ export async function sendSubscriberReport(
   <div style="margin-top:24px;padding-top:16px;border-top:1px solid #1f2937;text-align:center;">
     <a href="${baseUrl}" style="color:#22c55e;font-size:13px;text-decoration:none;font-weight:600;">augmentedwith.ai</a>
     <p style="color:#374151;font-size:11px;margin:8px 0 0 0;">
-      <a href="${unsubscribeUrl}" style="color:#374151;">Unsubscribe</a>
+      <a href="${baseUrl}/unsubscribe?email=%%EMAIL%%" style="color:#374151;">Unsubscribe</a>
     </p>
   </div>
 </body>
 </html>`;
-  }
 
-  // Send individually so each gets a personalized signed unsubscribe link.
+  // Send individually so each gets a personalized unsubscribe link.
   // For large lists this should use Resend's batch API — fine for now.
   const BATCH_SIZE = 50;
   for (let i = 0; i < subscribers.length; i += BATCH_SIZE) {
@@ -176,7 +171,7 @@ export async function sendSubscriberReport(
           from: fromEmail,
           to: email,
           subject: `This week in AI — ${report.date}`,
-          html: buildHtml(email),
+          html: html.replace("%%EMAIL%%", encodeURIComponent(email)),
         })
       )
     );

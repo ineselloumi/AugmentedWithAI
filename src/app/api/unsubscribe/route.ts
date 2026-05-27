@@ -1,16 +1,11 @@
 import { supabase } from "@/lib/supabase";
 import { removeSubscriber } from "@/services/pipeline/store";
-import { verifyUnsubscribeToken } from "@/lib/unsubscribeToken";
 import { rateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { serverError } from "@/lib/errors";
 
-// GET handles the click from the email link — we serve a confirmation page
-// with a POST form. We don't act on GET because email link-previewers and
-// scanners would auto-trigger it, and the actual unsubscribe is irreversible
-// from the user's perspective without manual help.
-//
-// Both GET and POST verify the HMAC token so an attacker can't unsubscribe
-// other people just by knowing their email.
+// GET serves a confirmation page with a POST form. This stops email
+// link-previewers and antivirus scanners from auto-triggering an
+// unsubscribe before the human clicks.
 
 function plainText(body: string, status: number): Response {
   return new Response(body, { status, headers: { "Content-Type": "text/plain" } });
@@ -42,27 +37,23 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
+function isValidEmail(email: string): boolean {
+  return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 export async function GET(req: Request) {
   const rl = rateLimit(req, { key: "unsubscribe", limit: 20, windowSec: 3600 });
   if (!rl.ok) return rateLimitResponse(rl.retryAfterSec);
 
   const { searchParams } = new URL(req.url);
   const emailRaw = searchParams.get("email");
-  const token = searchParams.get("token");
 
-  if (!emailRaw || !token) {
-    return plainText("Missing email or token parameter.", 400);
-  }
+  if (!emailRaw) return plainText("Missing email parameter.", 400);
 
   const email = emailRaw.trim().toLowerCase();
-  if (!verifyUnsubscribeToken(email, token)) {
-    return plainText("Invalid or expired unsubscribe link.", 403);
-  }
+  if (!isValidEmail(email)) return plainText("Invalid email address.", 400);
 
-  // Show a confirmation page with a POST form. Prevents email scanners from
-  // automatically unsubscribing the user before they click.
   const safeEmail = escapeHtml(email);
-  const safeToken = escapeHtml(token);
   return htmlPage(
     `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Unsubscribe</title>
@@ -76,7 +67,6 @@ button:hover{background:#991b1b;}</style></head>
 <p>Click below to confirm unsubscribing <strong>${safeEmail}</strong>.</p>
 <form method="POST" action="/api/unsubscribe">
 <input type="hidden" name="email" value="${safeEmail}">
-<input type="hidden" name="token" value="${safeToken}">
 <button type="submit">Confirm unsubscribe</button>
 </form></div></body></html>`,
     200,
@@ -88,31 +78,23 @@ export async function POST(req: Request) {
   if (!rl.ok) return rateLimitResponse(rl.retryAfterSec);
 
   let email: string | null = null;
-  let token: string | null = null;
 
   const contentType = req.headers.get("content-type") ?? "";
   try {
     if (contentType.includes("application/json")) {
       const body = (await req.json()) as Record<string, unknown>;
       email = typeof body.email === "string" ? body.email : null;
-      token = typeof body.token === "string" ? body.token : null;
     } else {
       const form = await req.formData();
       email = typeof form.get("email") === "string" ? (form.get("email") as string) : null;
-      token = typeof form.get("token") === "string" ? (form.get("token") as string) : null;
     }
   } catch (err) {
     return serverError("unsubscribe", err);
   }
 
-  if (!email || !token) {
-    return plainText("Missing email or token parameter.", 400);
-  }
-
+  if (!email) return plainText("Missing email parameter.", 400);
   email = email.trim().toLowerCase();
-  if (!verifyUnsubscribeToken(email, token)) {
-    return plainText("Invalid or expired unsubscribe link.", 403);
-  }
+  if (!isValidEmail(email)) return plainText("Invalid email address.", 400);
 
   const result = await performUnsubscribe(email);
   if (!result.ok) return plainText("Could not process unsubscribe. Please try again later.", 500);
