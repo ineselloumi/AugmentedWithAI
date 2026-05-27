@@ -96,7 +96,7 @@ export default function Home() {
       <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
-          <p className="text-neutral-400 text-sm font-semibold">FIND YOUR EDGE WITH AI</p>
+          <p className="text-neutral-400 text-sm font-semibold">AUGMENTED WITH AI</p>
           <button
             onClick={() => setDrawerState("open")}
             className="lg:hidden flex items-center gap-1.5 bg-neutral-900 border border-neutral-800 rounded-full px-3 py-1.5 text-xs text-white"
