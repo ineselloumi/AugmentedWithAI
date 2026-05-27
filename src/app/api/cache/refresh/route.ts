@@ -16,7 +16,7 @@ async function refreshRole(role: string): Promise<{ role: string; tasks: number;
   // Step 1: Refresh tasks
   let analysis;
   try {
-    analysis = await provider.analyzeRole(role);
+    analysis = await provider.analyzeRole(role, "sonnet");
     await setCached(role, analysis);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

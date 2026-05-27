@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const provider = getProvider();
-    const result = await provider.analyzeRole(trimmedRole);
+    const result = await provider.analyzeRole(trimmedRole, "haiku");
     await setCached(trimmedRole, result);
     return NextResponse.json(result);
   } catch (err) {

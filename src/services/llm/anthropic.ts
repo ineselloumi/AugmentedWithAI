@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { LLMProvider, RoleAnalysisResponse, ToolsResponse } from "./types";
+import type { LLMProvider, ModelTier, RoleAnalysisResponse, ToolsResponse } from "./types";
 import {
   ANALYZE_ROLE_SYSTEM,
   analyzeRoleUserPrompt,
@@ -7,7 +7,10 @@ import {
   toolsUserPrompt,
 } from "@/lib/prompts";
 
-const MODEL = "claude-sonnet-4-6";
+const MODELS: Record<ModelTier, string> = {
+  sonnet: "claude-sonnet-4-6",
+  haiku:  "claude-haiku-4-5-20251001",
+};
 
 function extractJson(text: string): string {
   let raw = text.trim();
@@ -36,9 +39,9 @@ export class AnthropicProvider implements LLMProvider {
   }
 
   // Phase 1 — fast, no web search
-  async analyzeRole(role: string): Promise<RoleAnalysisResponse> {
+  async analyzeRole(role: string, tier: ModelTier = "sonnet"): Promise<RoleAnalysisResponse> {
     const response = await this.client.messages.create({
-      model: MODEL,
+      model: MODELS[tier],
       max_tokens: 1000,
       system: [{ type: "text", text: ANALYZE_ROLE_SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: analyzeRoleUserPrompt(role) }],
@@ -69,7 +72,7 @@ export class AnthropicProvider implements LLMProvider {
     taskDescription: string,
   ): Promise<ToolsResponse> {
     const response = await this.client.messages.create({
-      model: MODEL,
+      model: MODELS.sonnet,
       max_tokens: 1024,
       system: [{ type: "text", text: TOOLS_SYSTEM, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: toolsUserPrompt(role, taskTitle, taskDescription) }],
