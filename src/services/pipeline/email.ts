@@ -157,7 +157,7 @@ export async function sendSubscriberReport(
   ${itemsHtml}
 
   <div style="margin-top:24px;padding-top:16px;border-top:1px solid #1f2937;text-align:center;">
-    <a href="${baseUrl}" style="color:#22c55e;font-size:13px;text-decoration:none;font-weight:600;">multiplyme.app</a>
+    <a href="${baseUrl}" style="color:#22c55e;font-size:13px;text-decoration:none;font-weight:600;">augmentedwith.ai</a>
     <p style="color:#374151;font-size:11px;margin:8px 0 0 0;">
       <a href="${baseUrl}/unsubscribe?email=%%EMAIL%%" style="color:#374151;">Unsubscribe</a>
     </p>

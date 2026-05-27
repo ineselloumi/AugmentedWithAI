@@ -15,7 +15,7 @@ async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
       signal: controller.signal,
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (compatible; MultiplyMe-Pipeline/1.0; +https://multiplyme.app)",
+          "Mozilla/5.0 (compatible; AugmentedWithAI-Pipeline/1.0; +https://augmentedwith.ai)",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       },
       redirect: "follow",

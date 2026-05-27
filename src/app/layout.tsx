@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MultiplyMe — AI tools for your role",
+  title: "Augmented With AI — AI tools for your role",
   description: "Discover the best AI tools for your job role to work faster and smarter.",
 };
 
