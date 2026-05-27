@@ -1,6 +1,6 @@
 # MultiplyMe
 
-**Discover the best AI tools for your job — fast.**
+**Discover the best AI tools for your job.**
 
 Type in any job title and MultiplyMe maps out the five tasks that take the most of your time, scores each one by how much AI can realistically help, and surfaces the most effective AI tools available today for every task.
 
