@@ -1,11 +1,8 @@
 import { supabase } from "@/lib/supabase";
 import type { RoleAnalysisResponse } from "@/types";
+import { normalizeRole } from "@/lib/roleAliases";
 
 const TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-
-function normalizeKey(role: string): string {
-  return role.toLowerCase().trim();
-}
 
 export async function getCached(role: string): Promise<RoleAnalysisResponse | null> {
   if (!supabase) return null;
@@ -13,7 +10,7 @@ export async function getCached(role: string): Promise<RoleAnalysisResponse | nu
   const { data, error } = await supabase
     .from("role_cache")
     .select("data, cached_at")
-    .eq("role", normalizeKey(role))
+    .eq("role", normalizeRole(role))
     .single();
 
   if (error || !data) return null;
@@ -29,7 +26,7 @@ export async function setCached(role: string, result: RoleAnalysisResponse): Pro
 
   const { error } = await supabase
     .from("role_cache")
-    .upsert({ role: normalizeKey(role), data: result, cached_at: new Date().toISOString() });
+    .upsert({ role: normalizeRole(role), data: result, cached_at: new Date().toISOString() });
 
   if (error) {
     console.error("[roleCache] supabase write error:", error);

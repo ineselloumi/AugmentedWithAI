@@ -3,6 +3,7 @@ import TaskCard from "./TaskCard";
 
 interface ResultsSectionProps {
   role: string;
+  displayRole: string;
   tasks: Task[];
   toolsMap: Record<string, TaskTool[] | null>;
   loadingTools: Record<string, boolean>;
@@ -12,6 +13,7 @@ interface ResultsSectionProps {
 
 export default function ResultsSection({
   role,
+  displayRole,
   tasks,
   toolsMap,
   loadingTools,
@@ -22,8 +24,8 @@ export default function ResultsSection({
     <section className="w-full mt-10">
       <div className="mb-2">
         <h2 className="text-xl font-bold text-white">
-          {role
-            ? <>How to get more leverage as a <span className="text-neutral-300">{role}</span></>
+          {displayRole
+            ? <>How to get more leverage as a <span className="text-neutral-300">{displayRole}</span></>
             : "How to get more leverage"}
         </h2>
       </div>

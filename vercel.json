@@ -2,7 +2,11 @@
   "crons": [
     {
       "path": "/api/trending/refresh",
-      "schedule": "0 7 * * *"
+      "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/cache/refresh",
+      "schedule": "0 3 * * 0"
     }
   ]
 }

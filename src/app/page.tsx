@@ -12,6 +12,7 @@ const QUICK_ROLES = ["Product Manager", "Software Engineer", "Data Analyst", "Ma
 export default function Home() {
   const [query, setQuery] = useState("");
   const [submittedRole, setSubmittedRole] = useState("");
+  const [displayRole, setDisplayRole] = useState("");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [toolsMap, setToolsMap] = useState<Record<string, TaskTool[] | null>>({});
   const [loadingTools, setLoadingTools] = useState<Record<string, boolean>>({});
@@ -31,6 +32,7 @@ export default function Home() {
           role,
           taskTitle: task.title,
           taskDescription: task.description,
+          taskId: task.id,
         }),
       });
       const data = await res.json();
@@ -50,6 +52,7 @@ export default function Home() {
     if (!searchRole) return;
 
     if (role) setQuery(role);
+    setDisplayRole(searchRole);
     setIsLoading(true);
     setError(null);
     setTasks([]);
@@ -138,6 +141,7 @@ export default function Home() {
         {(isLoading || tasks.length > 0) && (
           <ResultsSection
             role={submittedRole}
+            displayRole={displayRole}
             tasks={tasks}
             toolsMap={toolsMap}
             loadingTools={loadingTools}
