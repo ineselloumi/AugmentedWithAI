@@ -185,19 +185,24 @@ function evidenceLink(ev: EvidenceItem, toolName: string): string {
 }
 
 function TrendingCard({ item }: { rank: number; item: TrendingItem }) {
-  const xSearchUrl = `https://x.com/search?q=${encodeURIComponent(`"${item.name}"`)}&src=typed_query&f=top`;
   const evidence = Array.isArray(item.evidence) ? item.evidence : [];
+  const firstEvidenceUrl = evidence.find((e) => e.url)?.url ?? null;
+  const primaryUrl =
+    (Array.isArray(item.links) && item.links[0]) ||
+    firstEvidenceUrl ||
+    `https://x.com/search?q=${encodeURIComponent(`"${item.name}"`)}&src=typed_query&f=top`;
 
   return (
     <div className="rounded-xl bg-neutral-900 border border-neutral-800 px-3 py-2.5">
       <div className="flex items-start gap-2">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" className="shrink-0 mt-0.5 text-green-500" xmlns="http://www.w3.org/2000/svg">
-          <path d="M7 1L1.5 7h4L3.5 11.5 10.5 5H6.5L7 1z"/>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5" aria-hidden>
+          <line x1="7" y1="17" x2="17" y2="7" />
+          <polyline points="7 7 17 7 17 17" />
         </svg>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
             <a
-              href={xSearchUrl}
+              href={primaryUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs font-semibold text-white hover:text-green-400 transition-colors truncate"

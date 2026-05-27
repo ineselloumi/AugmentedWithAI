@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { role, taskTitle, taskDescription, hasChatGPT, hasClaude } = body as Record<string, unknown>;
+  const { role, taskTitle, taskDescription } = body as Record<string, unknown>;
 
   if (!role || typeof role !== "string" || role.trim().length === 0) {
     return NextResponse.json({ error: "role is required" }, { status: 400 });
@@ -27,7 +27,6 @@ export async function POST(req: NextRequest) {
       role.trim(),
       taskTitle.trim(),
       taskDescription.trim(),
-      { hasChatGPT: hasChatGPT === true, hasClaude: hasClaude === true }
     );
     return NextResponse.json(result);
   } catch (err) {

@@ -18,18 +18,10 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [hasChatGPT, setHasChatGPT] = useState(false);
-  const [hasClaude, setHasClaude] = useState(false);
   const [freeOnly, setFreeOnly] = useState(false);
   const [drawerState, setDrawerState] = useState<DrawerState>("partial");
 
-  function handleFilterChange(key: "hasChatGPT" | "hasClaude" | "freeOnly", value: boolean) {
-    if (key === "hasChatGPT") setHasChatGPT(value);
-    if (key === "hasClaude") setHasClaude(value);
-    if (key === "freeOnly") setFreeOnly(value);
-  }
-
-  async function fetchToolsForTask(role: string, task: Task, chatGPT: boolean, claude: boolean) {
+  async function fetchToolsForTask(role: string, task: Task) {
     setLoadingTools((prev) => ({ ...prev, [task.id]: true }));
     try {
       const res = await fetch("/api/role-tools", {
@@ -39,8 +31,6 @@ export default function Home() {
           role,
           taskTitle: task.title,
           taskDescription: task.description,
-          hasChatGPT: chatGPT,
-          hasClaude: claude,
         }),
       });
       const data = await res.json();
@@ -88,8 +78,7 @@ export default function Home() {
       setIsLoading(false);
 
       // Phase 2 — parallel tool fetches, one per task
-      // Snapshot filter state at search time so all tasks use the same flags
-      resolvedTasks.forEach((task) => fetchToolsForTask(resolvedRole, task, hasChatGPT, hasClaude));
+      resolvedTasks.forEach((task) => fetchToolsForTask(resolvedRole, task));
     } catch {
       setError("Failed to reach the server. Please try again.");
       setIsLoading(false);

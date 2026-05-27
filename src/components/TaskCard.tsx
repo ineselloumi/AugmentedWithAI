@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { Task, TaskTool } from "@/types";
 
 interface TaskCardProps {
@@ -36,23 +36,16 @@ function ToolCard({
   tool,
   role,
   task,
-  preloadedPrompt,
 }: {
   tool: TaskTool;
   role: string;
   task: Task;
-  preloadedPrompt: string | null;
 }) {
   const [promptState, setPromptState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [prompt, setPrompt] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   async function generatePrompt() {
-    if (preloadedPrompt) {
-      setPrompt(preloadedPrompt);
-      setPromptState("done");
-      return;
-    }
     setPromptState("loading");
     try {
       const res = await fetch("/api/generate-prompt", {
@@ -162,43 +155,6 @@ function ToolCard({
 }
 
 export default function TaskCard({ rank, role, task, tools, isLoadingTools, freeOnly }: TaskCardProps) {
-  const [preloadedPrompts, setPreloadedPrompts] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (isLoadingTools || !tools) return;
-    const chatbotTools = tools.filter((t) => t.is_chatbot);
-    if (chatbotTools.length === 0) return;
-
-    let cancelled = false;
-
-    async function preloadAll() {
-      for (const tool of chatbotTools) {
-        if (cancelled) break;
-        try {
-          const res = await fetch("/api/generate-prompt", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              role,
-              taskTitle: task.title,
-              taskDescription: task.description,
-              toolName: tool.name,
-            }),
-          });
-          const data = await res.json();
-          if (!cancelled && res.ok) {
-            setPreloadedPrompts((prev) => ({ ...prev, [tool.name]: data.prompt }));
-          }
-        } catch {
-          // silently skip — user can still generate on demand
-        }
-      }
-    }
-
-    preloadAll();
-    return () => { cancelled = true; };
-  }, [isLoadingTools, tools, role, task.title, task.description]);
-
   const visibleTools = tools && freeOnly ? tools.filter((t) => t.free_tier !== null) : tools;
   const badgeGradient = RANK_BADGE[rank] ?? "bg-neutral-700";
   const automationStyle = AUTOMATION_BADGE[task.automation_potential] ?? AUTOMATION_BADGE["Low"];
@@ -212,9 +168,6 @@ export default function TaskCard({ rank, role, task, tools, isLoadingTools, free
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-white font-semibold text-sm">{task.title}</p>
-            <span className={`px-2 py-0.5 rounded-full border text-xs font-medium ${automationStyle}`}>
-              ↑ {task.automation_potential}
-            </span>
             <span className="text-neutral-400 text-xs">{task.time_pct}% of time</span>
           </div>
           <p className="text-neutral-400 text-xs mt-0.5 leading-relaxed">{task.description}</p>
@@ -234,7 +187,6 @@ export default function TaskCard({ rank, role, task, tools, isLoadingTools, free
               tool={tool}
               role={role}
               task={task}
-              preloadedPrompt={preloadedPrompts[tool.name] ?? null}
             />
           ))
         ) : visibleTools != null && visibleTools.length === 0 && tools && tools.length > 0 ? (

@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { LLMProvider, RoleAnalysisResponse, ToolsResponse, SubscriptionContext } from "./types";
+import type { LLMProvider, RoleAnalysisResponse, ToolsResponse } from "./types";
 import {
   ANALYZE_ROLE_SYSTEM,
   analyzeRoleUserPrompt,
@@ -67,13 +67,12 @@ export class AnthropicProvider implements LLMProvider {
     role: string,
     taskTitle: string,
     taskDescription: string,
-    subscriptions: SubscriptionContext
   ): Promise<ToolsResponse> {
     const response = await this.client.messages.create({
       model: MODEL,
       max_tokens: 1024,
       system: [{ type: "text", text: TOOLS_SYSTEM, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content: toolsUserPrompt(role, taskTitle, taskDescription, subscriptions) }],
+      messages: [{ role: "user", content: toolsUserPrompt(role, taskTitle, taskDescription) }],
       tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 2 }],
     });
 

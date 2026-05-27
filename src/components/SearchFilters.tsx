@@ -1,32 +1,16 @@
 "use client";
 
 interface SearchFiltersProps {
-  hasChatGPT: boolean;
-  hasClaude: boolean;
   freeOnly: boolean;
-  onChange: (key: "hasChatGPT" | "hasClaude" | "freeOnly", value: boolean) => void;
+  onChange: (key: "freeOnly", value: boolean) => void;
   disabled: boolean;
 }
 
-export default function SearchFilters({ hasChatGPT, hasClaude, freeOnly, onChange, disabled }: SearchFiltersProps) {
+export default function SearchFilters({ freeOnly, onChange, disabled }: SearchFiltersProps) {
   return (
     <div className="mt-5">
       <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">Focus your search</p>
       <div className="flex flex-col gap-2">
-        <Checkbox
-          id="chatgpt"
-          label="I have a ChatGPT subscription"
-          checked={hasChatGPT}
-          onChange={(v) => onChange("hasChatGPT", v)}
-          disabled={disabled}
-        />
-        <Checkbox
-          id="claude"
-          label="I have a Claude subscription"
-          checked={hasClaude}
-          onChange={(v) => onChange("hasClaude", v)}
-          disabled={disabled}
-        />
         <Checkbox
           id="free-only"
           label="Only show me tools with a free trial or plan"
