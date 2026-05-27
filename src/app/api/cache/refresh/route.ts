@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getProvider } from "@/services/llm";
-import { setCached } from "@/lib/roleCache";
-import { setToolsCached } from "@/lib/toolsCache";
+import { getCached, setCached } from "@/lib/roleCache";
+import { getToolsCached, setToolsCached } from "@/lib/toolsCache";
 import { ROLE_ALIASES } from "@/lib/roleAliases";
 
 export const maxDuration = 800;
@@ -13,30 +13,42 @@ async function refreshRole(role: string): Promise<{ role: string; tasks: number;
   const provider = getProvider();
   const errors: string[] = [];
 
-  // Step 1: Refresh tasks
+  // Step 1: Refresh tasks — skip if already cached
   let analysis;
-  try {
-    analysis = await provider.analyzeRole(role, "sonnet");
-    await setCached(role, analysis);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    errors.push(`analyzeRole: ${msg}`);
-    return { role, tasks: 0, tools: 0, errors };
+  const cachedAnalysis = await getCached(role);
+  if (cachedAnalysis) {
+    analysis = cachedAnalysis;
+  } else {
+    try {
+      analysis = await provider.analyzeRole(role, "sonnet");
+      await setCached(role, analysis);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push(`analyzeRole: ${msg}`);
+      return { role, tasks: 0, tools: 0, errors };
+    }
   }
 
-  // Step 2: Refresh tools for each task in parallel
-  const toolResults = await Promise.allSettled(
-    analysis.tasks.map(async (task) => {
+  // Step 2: Refresh tools for each task sequentially — one call at a time
+  // to stay well within Anthropic's token-per-minute rate limit.
+  // Skip tasks that are already cached.
+  const toolErrors: string[] = [];
+  let toolsSucceeded = 0;
+
+  for (const task of analysis.tasks) {
+    const cachedTools = await getToolsCached(role, task.id);
+    if (cachedTools) {
+      toolsSucceeded++;
+      continue;
+    }
+    try {
       const tools = await provider.getToolsForTask(role, task.title, task.description);
       await setToolsCached(role, task.id, tools);
-    })
-  );
-
-  const toolErrors = toolResults
-    .filter((r): r is PromiseRejectedResult => r.status === "rejected")
-    .map((r) => `getToolsForTask: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`);
-
-  const toolsSucceeded = toolResults.filter((r) => r.status === "fulfilled").length;
+      toolsSucceeded++;
+    } catch (err) {
+      toolErrors.push(`getToolsForTask: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   return { role, tasks: 1, tools: toolsSucceeded, errors: [...errors, ...toolErrors] };
 }
